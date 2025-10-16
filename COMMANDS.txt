@@ -1,0 +1,108 @@
+AI SCREENSHOT DETECTOR - TERMINAL COMMANDS
+===========================================
+
+📋 COPY THESE COMMANDS TO RUN THE APPLICATION
+===========================================
+
+
+METHOD 1: RUN BOTH SERVERS IN SEPARATE TERMINALS (RECOMMENDED)
+----------------------------------------------------------------
+
+Terminal 1 - Python Backend:
+----------------------------
+cd "/Users/jameszhao/Desktop/VIrtual Shield copy"
+source .venv/bin/activate
+python api_server.py
+
+
+Terminal 2 - Next.js Frontend:
+-------------------------------
+cd "/Users/jameszhao/Desktop/VIrtual Shield copy/web-app"
+npm run dev
+
+
+Then open browser: http://localhost:3000
+-----------------------------------------
+
+✅ The application will work even if Reality Defender API is down!
+   It automatically falls back to mock responses for demo purposes.
+
+
+METHOD 2: RUN BOTH SERVERS WITH ONE COMMAND
+--------------------------------------------
+
+cd "/Users/jameszhao/Desktop/VIrtual Shield copy"
+./start_servers.sh
+
+
+Then open browser: http://localhost:3000
+-----------------------------------------
+
+
+TO STOP THE SERVERS
+-------------------
+Press Ctrl+C in the terminal(s)
+
+
+TO FORCE STOP IF NEEDED
+------------------------
+Kill Python backend:
+lsof -ti:5001 | xargs kill -9
+
+Kill Next.js frontend:
+lsof -ti:3000 | xargs kill -9
+
+
+TO TEST IF SERVERS ARE RUNNING
+-------------------------------
+Test Python backend:
+curl http://localhost:5001/health
+
+Test Next.js frontend:
+curl http://localhost:3000
+
+
+TROUBLESHOOTING
+---------------
+If either server crashes or stops:
+1. Press Ctrl+C to stop it
+2. Run the same command again to restart it
+3. The servers will keep running continuously until you stop them
+
+
+IMPORTANT NOTES
+---------------
+✓ Python backend MUST be running on port 5001
+✓ Next.js frontend MUST be running on port 3000
+✓ Start Python backend FIRST, then Next.js frontend
+✓ Both servers must be running for the app to work
+✓ Servers will run continuously until you stop them with Ctrl+C
+✓ You can analyze as many images as you want - it won't stop
+✓ ✅ WORKS EVEN IF REALITY DEFENDER API IS DOWN (uses mock responses)
+
+
+QUICK REFERENCE
+---------------
+Python server: http://localhost:5001
+Web application: http://localhost:3000
+Upload folder: uploads/
+
+
+STEP-BY-STEP FOR BEGINNERS
+---------------------------
+
+1. Open Terminal app on Mac
+
+2. Copy and paste this command to start Python backend:
+   cd "/Users/jameszhao/Desktop/VIrtual Shield copy" && source .venv/bin/activate && python api_server.py
+
+3. Open a NEW Terminal window (⌘N)
+
+4. Copy and paste this command to start Next.js frontend:
+   cd "/Users/jameszhao/Desktop/VIrtual Shield copy/web-app" && npm run dev
+
+5. Open browser and go to: http://localhost:3000
+
+6. Upload and analyze images - it will work continuously!
+
+7. To stop: Press Ctrl+C in each terminal window
