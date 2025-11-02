@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Python Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5001
+      - FLASK_DEBUG=false
+      # TODO: Set these in .env file
+      - REALITY_DEFENDER_API_KEY=${REALITY_DEFENDER_API_KEY}
+      - CUSTOM_API_KEY=${CUSTOM_API_KEY:-}
+      - CUSTOM_API_URL=${CUSTOM_API_URL:-}
+      - ENABLE_MOCK_MODE=${ENABLE_MOCK_MODE:-false}
+      - MAX_FILE_SIZE_MB=16
+      - RATE_LIMIT_PER_MINUTE=60
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Next.js Frontend (optional - for Docker deployment)
+  # frontend:
+  #   build:
+  #     context: ./web-app
+  #     dockerfile: Dockerfile.frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://backend:5001
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+
+# Optional: Add nginx reverse proxy for production
+# networks:
+#   default:
+#     name: ai-detector-network
