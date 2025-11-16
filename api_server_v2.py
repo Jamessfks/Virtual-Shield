@@ -18,6 +18,8 @@ import time
 # Import configuration and services
 from config import Config
 from services.detector import DetectorService
+from services.text_detector import get_text_detector
+from services.text_extractor import TextExtractor
 
 # ==================================
 # LOGGING CONFIGURATION
@@ -225,6 +227,34 @@ logger = logging.getLogger(__name__)
 # API ROUTES
 # ==================================
 
+@app.route('/', methods=['GET'])
+def index() -> Tuple[Response, int]:
+    """
+    Root endpoint - API information
+    """
+    return jsonify({
+        'name': 'Virtual Shield - AI Content Detector API',
+        'version': '2.0.0',
+        'description': 'API for detecting AI-generated images and text',
+        'documentation': {
+            'endpoints': {
+                '/health': 'Health check',
+                '/api/info': 'Detailed API information',
+                '/api/analyze': 'Analyze images for AI generation (POST)',
+                '/api/analyze-text': 'Analyze text for AI generation (POST)'
+            },
+            'quick_start': {
+                'health_check': 'GET /health',
+                'api_info': 'GET /api/info',
+                'test_image': 'POST /api/analyze with file upload',
+                'test_text': 'POST /api/analyze-text with JSON body {"text": "..."}'
+            }
+        },
+        'status': 'online',
+        'timestamp': datetime.now().isoformat()
+    }), 200
+
+
 @app.route('/health', methods=['GET'])
 def health_check() -> Tuple[Response, int]:
     """
@@ -328,15 +358,156 @@ def analyze_image() -> Tuple[Response, int]:
         logger.info("=" * 70)
 
 
+@app.route('/api/analyze-text', methods=['POST'])
+@rate_limit(max_requests=Config.RATE_LIMIT_PER_MINUTE)
+def analyze_text() -> Tuple[Response, int]:
+    """
+    Analyze text for AI-generated content
+    
+    Expects:
+        - file: Text file (.txt, .pdf, .docx) in multipart/form-data
+        OR
+        - text: Raw text string in JSON body
+    
+    Returns:
+        JSON with analysis results
+    """
+    filepath = None
+    start_time = time.time()
+    
+    try:
+        logger.info("=" * 70)
+        logger.info("New Text Analysis Request")
+        
+        # Get text detector instance
+        text_detector = get_text_detector()
+        
+        # Check if model is ready
+        if not text_detector.is_ready:
+            return jsonify({
+                'error': 'Text detector not ready',
+                'message': 'Model not trained. Please run train_text_detector.py first.',
+                'timestamp': datetime.now().isoformat()
+            }), 503
+        
+        # Get text from file or JSON body
+        text_content = None
+        filename = None
+        
+        if 'file' in request.files:
+            # Handle file upload
+            file = request.files['file']
+            
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
+            
+            # Check file extension
+            ext = Path(file.filename).suffix.lower()
+            if ext not in ['.txt', '.pdf', '.docx']:
+                return jsonify({
+                    'error': 'Invalid file type',
+                    'allowed_types': ['.txt', '.pdf', '.docx']
+                }), 400
+            
+            # Save file temporarily
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_filename = f"{timestamp}_{filename}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            
+            logger.info(f"Saving file: {unique_filename}")
+            file.save(filepath)
+            
+            # Extract text from file
+            logger.info(f"Extracting text from {ext} file...")
+            text_content = TextExtractor.extract_text(filepath)
+            
+        elif request.is_json:
+            # Handle JSON body with raw text
+            data = request.get_json()
+            text_content = data.get('text')
+            filename = "raw_text_input"
+        else:
+            return jsonify({
+                'error': 'Invalid request',
+                'message': 'Provide either a file upload or JSON with "text" field'
+            }), 400
+        
+        # Validate text
+        if not text_content or len(text_content.strip()) < 10:
+            return jsonify({
+                'error': 'Invalid text',
+                'message': 'Text must be at least 10 characters long'
+            }), 400
+        
+        # Analyze text
+        logger.info(f"Analyzing text (length: {len(text_content)} chars)...")
+        result = text_detector.detect_text(text_content)
+        
+        # Check for errors in detection
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        analysis_time = time.time() - start_time
+        logger.info(
+            f"Analysis complete: {result['classification']} "
+            f"(AI prob: {result['ai_probability']:.3f}, "
+            f"confidence: {result['confidence']}, "
+            f"time: {analysis_time:.2f}s)"
+        )
+        
+        # Prepare response
+        response_data = {
+            'success': True,
+            'filename': filename,
+            'classification': result['classification'],
+            'ai_probability': result['ai_probability'],
+            'human_probability': result['human_probability'],
+            'confidence': result['confidence'],
+            'confidence_score': result['confidence_score'],
+            'text_length': result['text_length'],
+            'word_count': result['word_count'],
+            'processing_time': analysis_time,
+            'timestamp': datetime.now().isoformat(),
+            'provider': 'custom_cnn_model'
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        logger.error(f"Text analysis failed: {e}", exc_info=True)
+        
+        return jsonify({
+            'error': 'Text analysis failed',
+            'details': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+        
+    finally:
+        # Clean up uploaded file
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+                logger.info(f"Cleaned up: {filepath}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up file: {e}")
+        
+        logger.info("=" * 70)
+
+
 @app.route('/api/info', methods=['GET'])
 def api_info() -> Tuple[Response, int]:
     """
     Get API information and available endpoints
     """
+    # Check text detector status
+    text_detector = get_text_detector()
+    text_detector_status = text_detector.health_check()
+    
     return jsonify({
-        'name': 'AI Screenshot Detector API',
+        'name': 'AI Content Detector API',
         'version': '2.0.0',
-        'description': 'Production-ready API for detecting AI-generated images',
+        'description': 'Production-ready API for detecting AI-generated images and text',
         'endpoints': {
             '/health': {
                 'method': 'GET',
@@ -350,6 +521,16 @@ def api_info() -> Tuple[Response, int]:
                 },
                 'rate_limit': f'{Config.RATE_LIMIT_PER_MINUTE} requests/minute'
             },
+            '/api/analyze-text': {
+                'method': 'POST',
+                'description': 'Analyze text for AI-generated content',
+                'parameters': {
+                    'file': 'Text file - .txt, .pdf, or .docx (multipart/form-data)',
+                    'text': 'Raw text string (JSON body)'
+                },
+                'rate_limit': f'{Config.RATE_LIMIT_PER_MINUTE} requests/minute',
+                'status': 'ready' if text_detector_status['healthy'] else 'not ready - model needs training'
+            },
             '/api/info': {
                 'method': 'GET',
                 'description': 'API information (this endpoint)'
@@ -358,7 +539,10 @@ def api_info() -> Tuple[Response, int]:
         'config': {
             'max_file_size': f'{Config.MAX_FILE_SIZE_MB}MB',
             'allowed_extensions': list(Config.ALLOWED_EXTENSIONS),
-            'provider': detector.provider,
+            'text_extensions': ['.txt', '.pdf', '.docx'],
+            'image_provider': detector.provider,
+            'text_model': 'CNN with textdescriptives features',
+            'text_model_ready': text_detector_status['healthy'],
             'environment': Config.FLASK_ENV
         }
     }), 200
@@ -386,6 +570,16 @@ def rate_limit_exceeded(error) -> Tuple[Response, int]:
     }), 429
 
 
+@app.errorhandler(404)
+def not_found(error) -> Tuple[Response, int]:
+    """Handle 404 errors"""
+    return jsonify({
+        'error': 'Not found',
+        'message': 'The requested endpoint does not exist',
+        'available_endpoints': ['/health', '/api/info', '/api/analyze', '/api/analyze-text']
+    }), 404
+
+
 @app.errorhandler(500)
 def internal_server_error(error) -> Tuple[Response, int]:
     """Handle internal server errors"""
@@ -399,6 +593,11 @@ def internal_server_error(error) -> Tuple[Response, int]:
 @app.errorhandler(Exception)
 def handle_exception(error) -> Tuple[Response, int]:
     """Handle uncaught exceptions"""
+    # Don't catch HTTP exceptions (they have their own handlers)
+    from werkzeug.exceptions import HTTPException
+    if isinstance(error, HTTPException):
+        return error
+    
     logger.error(f"Uncaught exception: {error}", exc_info=True)
     return jsonify({
         'error': 'Internal server error',
