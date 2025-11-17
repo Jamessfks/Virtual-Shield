@@ -8,11 +8,18 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
-import numpy as np
-import spacy
-import textdescriptives as td
-import joblib
-from tensorflow.keras.models import load_model
+
+# Try to import ML dependencies - they may not be available in serverless environments
+try:
+    import numpy as np
+    import spacy
+    import textdescriptives as td
+    import joblib
+    from tensorflow.keras.models import load_model
+    ML_DEPENDENCIES_AVAILABLE = True
+except ImportError as e:
+    ML_DEPENDENCIES_AVAILABLE = False
+    logging.warning(f"ML dependencies not available: {e}. Text detection will be disabled.")
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +48,12 @@ class TextDetectorService:
     def _load_model(self):
         """Load model and preprocessing artifacts"""
         try:
+            # Check if ML dependencies are available
+            if not ML_DEPENDENCIES_AVAILABLE:
+                logger.warning("ML dependencies not available. Text detection disabled.")
+                self.is_ready = False
+                return
+            
             logger.info("Loading text detection model...")
             
             # Check if model files exist
@@ -77,7 +90,6 @@ class TextDetectorService:
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
             self.is_ready = False
-            raise
     
     def _extract_features(self, text: str) -> np.ndarray:
         """
