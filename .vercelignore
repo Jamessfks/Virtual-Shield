@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Data and uploads (too large for deployment)
+data/
+uploads/
+screenshots/
+
+# Model files (if too large, deploy separately)
+models/
+
+# Logs
+*.log
+logs/
+
+# Testing
+testing.py
+debug_training.py
+test_*.html
+train_text_detector.py
+
+# Documentation
+Instructions/
+docs/
+README.md
+
+# Deployment
+deployment/
+
+# Git
+.git/
+.gitignore
+
+# Training scripts (not needed in production)
+backend_for_synthetic_ai_detection.py
+training_debug.log
+
+# Local server (use api/index.py instead)
+# Keep api_server_v2.py as it's imported by api/index.py

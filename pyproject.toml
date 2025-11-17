@@ -1,0 +1,13 @@
+[project]
+name = "virtual-shield"
+version = "2.0.0"
+description = "AI Content Detection API - Flask Backend"
+requires-python = ">=3.8"
+
+[project.scripts]
+app = "api.index:app"
+
+[tool.vercel.scripts]
+# Build command runs after dependencies are installed
+# Uncomment if you need a build step
+# build = "python build.py"
