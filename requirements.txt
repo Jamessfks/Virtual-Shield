@@ -1,19 +1,5 @@
-# Minimal dependencies for Vercel deployment
-# Only includes what's needed for the API to run (no ML/training dependencies)
+# Minimal dependencies for Vercel deployment - MVP
+# Only Flask - no external dependencies that could cause issues
 
-# Web Framework (Required)
 Flask==3.0.0
-Flask-CORS==4.0.0
 Werkzeug==3.0.1
-python-dotenv==1.0.0
-
-# Image Detection (Reality Defender SDK)
-realitydefender==0.1.0
-
-# File handling (lightweight)
-PyPDF2==3.0.1
-python-docx==1.1.0
-
-# Note: Text detection dependencies (TensorFlow, spaCy, etc.) are excluded
-# because they exceed Vercel's 250MB size limit and text detection models
-# are not included in the deployment anyway.
